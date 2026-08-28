@@ -1,0 +1,133 @@
+#include <Servo.h>
+int button = 2;
+bool forward = true;
+int ENA = 3;
+int ENB = 6;
+int echo1 = 4;
+int echo2 = 5;
+int trig1 = 7;
+int trig2 = 8;
+int in1 = 9;
+int in2 = 10;
+int in3 = 11;
+int in4 = 12;
+int steeringpot = A0;
+int rpmpot = A1;
+int servo = 13;
+int currentspeed = 0;
+Servo myservo;
+
+
+void setup(){
+  // put your setup code here, to run once:
+  Serial.begin(9600);
+  pinMode(button , INPUT_PULLUP);
+  pinMode(echo1 , INPUT);
+  pinMode(echo2 , INPUT);
+  pinMode(trig1 , OUTPUT);
+  pinMode(trig2 , OUTPUT);
+  pinMode(ENA , OUTPUT);
+  pinMode(ENB , OUTPUT);
+  pinMode(in1 , OUTPUT);
+  pinMode(in2 , OUTPUT);
+  pinMode(in3 , OUTPUT);
+  pinMode(in4 , OUTPUT);
+  myservo.attach(servo);
+}
+
+
+float calc1(int trigPin , int echoPin){
+  digitalWrite(trigPin , LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin , HIGH);
+  delayMicroseconds(2);
+  digitalWrite(trigPin , LOW);
+  long duration = pulseIn(echoPin, HIGH);
+  float distance = duration * 0.0343 / 2;
+  return distance;
+}
+
+
+void moveForward(){
+  digitalWrite(in1 , HIGH);
+  digitalWrite(in2 , LOW);
+  digitalWrite(in3 , HIGH);
+  digitalWrite(in4 , LOW);
+}
+
+
+void moveBackward(){
+  digitalWrite(in1 , LOW);
+  digitalWrite(in2 , HIGH);
+  digitalWrite(in3 , LOW);
+  digitalWrite(in4 , HIGH);
+}
+
+
+void stopm(){
+  digitalWrite(in1 , HIGH);
+  digitalWrite(in2 , HIGH);
+  digitalWrite(in3 , HIGH);
+  digitalWrite(in4 , HIGH);
+}
+
+
+void acceleration(int speed){
+  for (int i = currentspeed; i <= speed; i += 5){
+    analogWrite(ENA , i);
+    analogWrite(ENB , i);
+    delay(20);
+  }
+  currentspeed = speed;
+  analogWrite(ENA , currentspeed);
+  analogWrite(ENB , currentspeed);
+}
+
+
+void deceleration(int speed){
+  for (int i = currentspeed; i >= speed; i -= 5){
+    analogWrite(ENA , i);
+    analogWrite(ENB , i);
+    delay(20);
+  }
+  currentspeed = speed;
+  analogWrite(ENA , currentspeed);
+  analogWrite(ENB , currentspeed);
+}
+
+
+void loop(){
+  int rpmpot1 = analogRead(rpmpot);
+  int mapped1 = map(rpmpot1, 0, 1023, 0, 255);
+  int steeringpot1 = analogRead(steeringpot);
+  int mapped2 = map(steeringpot1, 0, 1023, 0, 180);
+  float distance1 = calc1(trig1 , echo1);
+  float distance2 = calc1(trig2 , echo2);
+  if (distance1 <= 30 || distance2 <= 30){
+    deceleration(0);
+    stopm();
+  }
+  else {
+    moveForward();
+    if (mapped > currentspeed){
+      acceleration(mapped1);
+    }
+    else if (mapped1 < currentspeed){
+      deceleration(mapped1);
+    }
+  }
+  if (digitalRead(button) == LOW){
+    forward = !forward;
+    delay(50);
+  }
+  if (forward == true){
+    myservo.write(mapped2);
+  }
+  else {
+    myservo.write(180 - mapped2);
+  }
+  Serial.println(mapped1);
+  Serial.println(currentspeed);  
+  Serial.println(distance1);
+  Serial.println(distance2);
+}
